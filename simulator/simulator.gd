@@ -14,6 +14,8 @@ var buffer : RID
 var multimesh : MultiMesh
 var multimesh_instance : MultiMeshInstance3D
 
+const LOCAL_SIZE_X := 128
+
 func _ready():
 	## Initialize rendering device
 	rd = RenderingServer.create_local_rendering_device()
@@ -25,13 +27,25 @@ func _ready():
 	
 	## Initialize GPU buffer for particle data
 	# Prepare our data. We use floats in the shader, so we need 32 bit.
-	var input := PackedFloat32Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
-	print(multimesh.get_instance_transform(0))
-	var input_bytes := input.to_byte_array()
+	var pba = PackedByteArray()
+	pba.resize(num_particles * 4 * 4) # 4 floats * 4 bytes each per particle
 
-	# Create a storage buffer that can hold our float values.
-	# Each float has 4 bytes (32 bit) so 10 x 4 = 40 bytes
-	buffer = rd.storage_buffer_create(input_bytes.size(), input_bytes)
+	for i in range(num_particles):
+		var idx_b = i * 16 # bytes per particle
+		var pos = Vector3(
+			randf() * (box_max.x - box_min.x) + box_min.x,
+			randf() * (box_max.y - box_min.y) + box_min.y,
+			randf() * (box_max.z - box_min.z) + box_min.z
+		)
+		pba.encode_float(idx_b + 0, pos.x)
+		pba.encode_float(idx_b + 4, pos.y)
+		pba.encode_float(idx_b + 8, pos.z)
+		pba.encode_float(idx_b + 12, 0.0) # w (unused)
+
+	buffer = rd.storage_buffer_create(pba.size(), pba)
+	
+	## Precreate pipeline
+	pipeline = rd.compute_pipeline_create(shader)
 
 	## Set up the multimesh
 	multimesh = MultiMesh.new()
@@ -55,14 +69,37 @@ func _physics_process(delta):
 	var uniform_set := rd.uniform_set_create([uniform], shader, 0) # the last parameter (the 0) needs to match the "set" in our shader file
 
 	## Define the compute pipeline
-	pipeline = rd.compute_pipeline_create(shader)
 	var compute_list := rd.compute_list_begin()
 	rd.compute_list_bind_compute_pipeline(compute_list, pipeline)
 	rd.compute_list_bind_uniform_set(compute_list, uniform_set, 0)
-	rd.compute_list_dispatch(compute_list, 5, 1, 1)
-	rd.compute_list_end()
+	
+	## Set push constants
+	var pc := PackedByteArray()
+	pc.resize(64)
+	# gravity (vec3) @ offset 0
+	pc.encode_float(0, gravity.x)
+	pc.encode_float(4, gravity.y)
+	pc.encode_float(8, gravity.z)
+	# box_min (vec3) @ offset 16
+	pc.encode_float(16, box_min.x)
+	pc.encode_float(20, box_min.y)
+	pc.encode_float(24, box_min.z)
+	# box_max (vec3) @ offset 32
+	pc.encode_float(32, box_max.x)
+	pc.encode_float(36, box_max.y)
+	pc.encode_float(40, box_max.z)
+	# damping (float) @ offset 48
+	pc.encode_float(48, damping)
+	# dt (float) @ offset 52
+	pc.encode_float(52, delta)
+	# (bytes 56–63 remain as padding — vulkan word-aligns push constants?)
+	rd.compute_list_set_push_constant(compute_list, pc, 64)
 	
 	## Dispatch compute shader
+	var groups_x = int((num_particles + LOCAL_SIZE_X - 1) / LOCAL_SIZE_X)
+	rd.compute_list_dispatch(compute_list, groups_x, 1, 1)
+	rd.compute_list_end()
+	
 	rd.submit()
 	rd.sync()
 	
@@ -74,16 +111,14 @@ func _physics_process(delta):
 	_update_multimesh(output)
 
 func _update_multimesh(data: PackedFloat32Array):
-	#var stride = 6
-	#for i in num_particles:
-		#var idx = i * stride
-		#var pos = Vector3(data[idx + 0], data[idx + 1], data[idx + 2])
-		#var t = Transform3D(Basis(), pos)
-		#multimesh.set_instance_transform(i, t)
-	#print(data)
-	return
+	for i in range(num_particles):
+		var idx = i * 4
+		var pos = Vector3(data[idx + 0], data[idx + 1], data[idx + 2])
+		var t = Transform3D(Basis(), pos)
+		multimesh.set_instance_transform(i, t)
 
 func _clean_shader() -> void:
 	## Free the shader buffer and pipeline manually
-	rd.free_rid(buffer)
-	rd.free_rid(pipeline)
+	if buffer: rd.free_rid(buffer)
+	if pipeline: rd.free_rid(pipeline)
+	if shader: rd.free_rid(shader)
