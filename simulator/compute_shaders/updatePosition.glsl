@@ -8,10 +8,10 @@ layout(set = 0, binding = 0, std430) restrict buffer ParticleBuffer {
     vec4 particles[]; // x,y,z,w
 } particles_buf;
 
-layout(push_constant) uniform PushConstants {
-    vec3 gravity;
-    vec3 box_min;
-    vec3 box_max;
+layout(push_constant, std430) uniform PushConstants {
+    vec3 gravity; float _pad0;
+    vec3 box_min; float _pad1;
+    vec3 box_max; float _pad2;
     float damping;
     float dt;
 } pc;
@@ -25,18 +25,18 @@ void main() {
 
     vec4 p = particles_buf.particles[idx];
     vec3 pos = p.xyz;
+    float vy = p.w;
 
-    // Here we treat particles_buf.particles[idx].w as a trailing velocity.y or similar only for demo:
-    pos += pc.gravity * pc.dt;
+    // Euler integration for gravity with damping (w is used for velocity, but this will be changed later)
+    vy += pc.gravity.y * pc.dt;
+    pos.y += vy * pc.dt;
 
-    // keep inside box
-    if (pos.x < pc.box_min.x) pos.x = pc.box_min.x;
-    if (pos.y < pc.box_min.y) pos.y = pc.box_min.y;
-    if (pos.z < pc.box_min.z) pos.z = pc.box_min.z;
-    if (pos.x > pc.box_max.x) pos.x = pc.box_max.x;
-    if (pos.y > pc.box_max.y) pos.y = pc.box_max.y;
-    if (pos.z > pc.box_max.z) pos.z = pc.box_max.z;
+    // Detect bounding box collision
+    if (pos.y < pc.box_min.y) {
+        pos.y = pc.box_min.y;
+        vy *= pc.damping;
+    }
 
     // write back
-    particles_buf.particles[idx].xyz = pos;
+    particles_buf.particles[idx] = vec4(pos, vy);
 }

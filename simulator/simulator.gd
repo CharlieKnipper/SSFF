@@ -1,10 +1,10 @@
 extends Node3D
 
-@export var num_particles := 1024
-@export var box_min := Vector3(-5, 0, -5)
+@export var num_particles := 1000
+@export var box_min := Vector3(-5, -3.9, -5)
 @export var box_max := Vector3(5, 5, 5)
 @export var gravity := Vector3(0, -9.81, 0)
-@export var damping := 0.5
+@export var damping := -0.5
 @export var mesh := SphereMesh.new()
 
 var rd : RenderingDevice
@@ -33,9 +33,9 @@ func _ready():
 	for i in range(num_particles):
 		var idx_b = i * 16 # bytes per particle
 		var pos = Vector3(
-			randf() * (box_max.x - box_min.x) + box_min.x,
-			randf() * (box_max.y - box_min.y) + box_min.y,
-			randf() * (box_max.z - box_min.z) + box_min.z
+			clamp(randf()*3, box_min.x, box_max.x),
+			clamp(randf(), box_min.y, box_max.y),
+			clamp(randf()*3, box_min.z, box_max.z)
 		)
 		pba.encode_float(idx_b + 0, pos.x)
 		pba.encode_float(idx_b + 4, pos.y)
