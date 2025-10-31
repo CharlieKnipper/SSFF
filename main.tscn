@@ -1,22 +1,13 @@
-[gd_scene load_steps=7 format=3 uid="uid://b5ursdn8tvjxd"]
+[gd_scene load_steps=5 format=3 uid="uid://b5ursdn8tvjxd"]
 
 [ext_resource type="Script" uid="uid://cxyhmtvqystl0" path="res://simulator/simulator.gd" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://b4tc20buttrgx" path="res://scripts/camera.gd" id="2_0xm2m"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_sgp6g"]
 size = Vector3(8, 0.1, 8)
 
 [sub_resource type="BoxMesh" id="BoxMesh_sgp6g"]
 size = Vector3(8, 0.1, 8)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_o5qli"]
-size = Vector3(8, 4, 0.1)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_0wfyh"]
-size = Vector3(0.1, 4, 8)
-
-[sub_resource type="SphereMesh" id="SphereMesh_ig7tw"]
-radius = 0.2
-height = 0.4
 
 [node name="Main" type="Node3D"]
 
@@ -29,32 +20,15 @@ shape = SubResource("BoxShape3D_sgp6g")
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
 mesh = SubResource("BoxMesh_sgp6g")
 
-[node name="Walls" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -4.1, 0)
-
-[node name="W1" type="CollisionShape3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 4)
-shape = SubResource("BoxShape3D_o5qli")
-
-[node name="W2" type="CollisionShape3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -4)
-shape = SubResource("BoxShape3D_o5qli")
-
-[node name="W3" type="CollisionShape3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 2, 0)
-shape = SubResource("BoxShape3D_0wfyh")
-
-[node name="W4" type="CollisionShape3D" parent="Walls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 2, 0)
-shape = SubResource("BoxShape3D_0wfyh")
-
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.6362128, 0.7715135, 0, -0.7715135, 0.6362128, 0, 4.5905056, 5.0099216)
+transform = Transform3D(1, 0, 0, 0, 1.192488e-08, 0.99999994, 0, -0.99999994, 1.192488e-08, 0, 4.5905056, 5.0099216)
 shadow_enabled = true
-
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.9107846, 0.41288185, 0, -0.41288185, 0.9107846, 0, 0.19472313, 7.639713)
 
 [node name="Simulator" type="Node3D" parent="."]
 script = ExtResource("1_ig7tw")
-mesh = SubResource("SphereMesh_ig7tw")
+
+[node name="Rig" type="Node3D" parent="."]
+script = ExtResource("2_0xm2m")
+
+[node name="Camera3D" type="Camera3D" parent="Rig"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 6)
