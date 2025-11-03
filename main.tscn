@@ -1,34 +1,85 @@
-[gd_scene load_steps=5 format=3 uid="uid://b5ursdn8tvjxd"]
+[gd_scene load_steps=8 format=3 uid="uid://b5ursdn8tvjxd"]
 
 [ext_resource type="Script" uid="uid://cxyhmtvqystl0" path="res://simulator/simulator.gd" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://b4tc20buttrgx" path="res://scripts/camera.gd" id="2_0xm2m"]
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_sgp6g"]
-size = Vector3(8, 0.1, 8)
-
 [sub_resource type="BoxMesh" id="BoxMesh_sgp6g"]
 size = Vector3(8, 0.1, 8)
 
+[sub_resource type="BoxMesh" id="BoxMesh_0xm2m"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_0xm2m"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_h2yge"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_0xm2m"]
+radius = 0.05
+height = 0.1
+
 [node name="Main" type="Node3D"]
 
-[node name="Ground" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -4.1, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
-shape = SubResource("BoxShape3D_sgp6g")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+[node name="Ground" type="MeshInstance3D" parent="." groups=["collidable"]]
+transform = Transform3D(1, 0, 0, 0, 5.6868844, 0, 0, 0, 1.793807, 0, 0, 0)
 mesh = SubResource("BoxMesh_sgp6g")
+skeleton = NodePath("")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1.192488e-08, 0.99999994, 0, -0.99999994, 1.192488e-08, 0, 4.5905056, 5.0099216)
-shadow_enabled = true
+[node name="Ground2" type="MeshInstance3D" parent="." groups=["collidable"]]
+transform = Transform3D(1, 0, 0, 0, 5.5343757, 0, 0, 0, 1.793807, 0, 6.829623, 0)
+mesh = SubResource("BoxMesh_sgp6g")
+skeleton = NodePath("")
 
-[node name="Simulator" type="Node3D" parent="."]
+[node name="Wall" type="MeshInstance3D" parent="." groups=["collidable"]]
+transform = Transform3D(7.6402287, 0, 0, 0, 6.9313035, 0, 0, 0, 1.5960035, 0, 3.204785, 6.3690686)
+mesh = SubResource("BoxMesh_0xm2m")
+
+[node name="Wall2" type="MeshInstance3D" parent="." groups=["collidable"]]
+transform = Transform3D(7.6402287, 0, 0, 0, 6.9313035, 0, 0, 0, 0.7095305, 0, 3.481882, -6.5)
+mesh = SubResource("BoxMesh_0xm2m")
+
+[node name="Wall3" type="MeshInstance3D" parent="." groups=["collidable"]]
+transform = Transform3D(1.1143252, 0, 0, 0, 6.9313035, 0, 0, 0, 14.281727, 4, 3.4820952, 0)
+mesh = SubResource("BoxMesh_0xm2m")
+
+[node name="Wall4" type="MeshInstance3D" parent="." groups=["collidable"]]
+transform = Transform3D(1.1143252, 0, 0, 0, 6.9313035, 0, 0, 0, 14.281727, -3.4223375, 3.4820952, 0)
+mesh = SubResource("BoxMesh_0xm2m")
+
+[node name="EmissionTracker" type="Node3D" parent="."]
+
+[node name="Nozzle" type="StaticBody3D" parent="EmissionTracker"]
+transform = Transform3D(1, 0, 0, 0, -0.3420201, -0.93969256, 0, 0.93969256, -0.3420201, 0, 0, 0)
+visible = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="EmissionTracker/Nozzle"]
+shape = SubResource("CylinderShape3D_0xm2m")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="EmissionTracker/Nozzle"]
+mesh = SubResource("CylinderMesh_h2yge")
+
+[node name="EmissionPoint" type="MeshInstance3D" parent="EmissionTracker"]
+transform = Transform3D(1, 0, 0, 0, 0.99999964, 0, 0, 0, 0.99999964, 0, 4, -1)
+mesh = SubResource("SphereMesh_0xm2m")
+skeleton = NodePath("../Nozzle")
 script = ExtResource("1_ig7tw")
 
 [node name="Rig" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.034505, 0)
 script = ExtResource("2_0xm2m")
+rotation_speed = 30.0
 
 [node name="Camera3D" type="Camera3D" parent="Rig"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, 6)
+transform = Transform3D(1, 0, 0, 0, 0.9514602, 0.3077718, 0, -0.3077718, 0.9514602, 0, 0, 3)
+fov = 100.0
+
+[node name="ProfileCamera" type="Camera3D" parent="."]
+transform = Transform3D(-4.327949e-08, -0.72007895, 0.6938923, -6.1295227e-09, 0.6938923, 0.72007895, -1, 2.6911417e-08, -3.4445044e-08, 3.729414, 6.200492, -0.35066748)
+fov = 100.0
+
+[node name="ExternalCamera" type="Camera3D" parent="."]
+transform = Transform3D(-3.552577e-08, 0.58263373, -0.81273484, 2.546773e-08, 0.81273484, 0.58263373, 1, 0, -4.371139e-08, -10.43229, 10.583673, 0)
+fov = 100.0
+
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -1)
+omni_range = 10.0
+omni_attenuation = 0.5
