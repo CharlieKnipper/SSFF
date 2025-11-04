@@ -3,9 +3,15 @@ extends Node3D
 @export var num_particles := 100000
 @export var gravity := Vector3(0, -9.81, 0)
 @export var damping := -0.7
-@export var lifetime := 10.0 # particle lifetime in seconds
-@export var initial_velocity := 5.0
+@export var flow_rate := 1
+@export var lifetime := 10.0
+@export var initial_velocity := Vector3(0.0, 0.0, 1.0)
 @export var max_colliders := 50
+@export var reload_controller : Button
+
+## Demo variables
+var particles_spawned := 0
+@onready var particle_label = get_node("/root/Main/UI/NumParticles")
 
 ## Where the particles are emitting from
 var emission_point : Vector3
@@ -22,7 +28,10 @@ var particle_mat : ShaderMaterial
 
 ## Everything we want sent to the gpu:
 var particle_texture_width : int
+var particle_texture_format : RDTextureFormat
+
 var collider_texture_width : int
+var collider_texture_format : RDTextureFormat
 var num_colliders : int
 
 # The position of each particle (1 texel = 1 particle)
@@ -53,7 +62,7 @@ func _ready():
 	# Define the empty texture format
 	particle_texture_width = ceil(sqrt(num_particles)) # we define the textures to be a square that has a number of texels >= to num_particles
 	
-	var particle_texture_format := RDTextureFormat.new()
+	particle_texture_format = RDTextureFormat.new()
 	particle_texture_format.width = particle_texture_width
 	particle_texture_format.height = particle_texture_width
 	particle_texture_format.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
@@ -74,13 +83,13 @@ func _ready():
 		pos_data[i * 4 + 0] = emission_point.x # x
 		pos_data[i * 4 + 1] = emission_point.y # y
 		pos_data[i * 4 + 2] = emission_point.z # z
-		pos_data[i * 4 + 3] = randf_range(0.0, lifetime) # lifetime
+		pos_data[i * 4 + 3] = lifetime # lifetime
 		
 		# Initial Velocity:
-		vel_data[i * 4 + 0] = randf_range(-1.0 * initial_velocity, initial_velocity) # x
-		vel_data[i * 4 + 1] = randf_range(-1.0 * initial_velocity, initial_velocity) # y
-		vel_data[i * 4 + 2] = randf_range(-1.0 * initial_velocity, initial_velocity) # z
-		vel_data[i * 4 + 3] = 0.0 # unused 4th value
+		vel_data[i * 4 + 0] = initial_velocity.x + randf() # x
+		vel_data[i * 4 + 1] = initial_velocity.y + randf() # y
+		vel_data[i * 4 + 2] = initial_velocity.z + randf() # z
+		vel_data[i * 4 + 3] = i # frame delay
 	
 	pos_texture_rid = rd.texture_create(particle_texture_format, RDTextureView.new(), [pos_data.to_byte_array()])
 	pos_texture = Texture2DRD.new()
@@ -93,7 +102,7 @@ func _ready():
 	## Collider texture setup
 	collider_texture_width = ceil(sqrt(max_colliders * 2)) # we define the textures to be a square that has a number of texels >= to max_colliders * 2
 	
-	var collider_texture_format := RDTextureFormat.new()
+	collider_texture_format = RDTextureFormat.new()
 	collider_texture_format.width = collider_texture_width
 	collider_texture_format.height = collider_texture_width
 	collider_texture_format.format = RenderingDevice.DATA_FORMAT_R32G32B32A32_SFLOAT
@@ -168,11 +177,15 @@ func _ready():
 	m.material_override = particle_mat
 	m.global_transform = Transform3D.IDENTITY # Ensure the mesh has an identity global transform so world space vertex coords map correctly
 	get_tree().root.add_child.call_deferred(m)
+	
+	# Connect to UI elements
+	reload_controller.pressed.connect(_reload_simulation)
 
 func _physics_process(delta):
+	_update_counter()
 	## Update all dynamic CPU-side data
 	# Update the emitter's position
-	#emission_point = self.global_position
+	emission_point = self.global_position
 	
 	# Update the collidables texture
 	rd.texture_update(collider_texture_rid, 0, _pack_collidables())
@@ -188,6 +201,30 @@ func _physics_process(delta):
 	rd.compute_list_dispatch(compute_list, particle_texture_width, particle_texture_width, 1)
 	rd.compute_list_end()
 	# we don't need to submit/sync because we're using the default rendering device; it will automatically handle any queued jobs
+
+func _rebind_textures() -> void:
+	## Compute shader uniform
+	# Create bindings for each texture
+	var pos_uniform := RDUniform.new()
+	pos_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	pos_uniform.binding = 0  # layout(binding=0) in GLSL
+	pos_uniform.add_id(pos_texture_rid)
+
+	var vel_uniform := RDUniform.new()
+	vel_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	vel_uniform.binding = 1  # layout(binding=1) in GLSL
+	vel_uniform.add_id(vel_texture_rid)
+	
+	var collider_uniform := RDUniform.new()
+	collider_uniform.uniform_type = RenderingDevice.UNIFORM_TYPE_IMAGE
+	collider_uniform.binding = 2  # layout(binding=2) in GLSL
+	collider_uniform.add_id(collider_texture_rid)
+
+	uniform_set = rd.uniform_set_create([pos_uniform, vel_uniform, collider_uniform], comp_shader, 0)
+	
+	## Vertex shader material
+	particle_mat.set_shader_parameter("pos_texture", pos_texture)
+	particle_mat.set_shader_parameter("vel_texture", vel_texture)
 
 func _pack_collidables() -> PackedByteArray:
 	# Get the axis aligned bounding box for all collidable objects in the scene
@@ -237,12 +274,69 @@ func _pack_push_constants(delta) -> PackedByteArray:
 	pc[4] = delta
 	# num_colliders (int)
 	pc[5] = float(num_colliders)
-	# collider_texture_width
+	# collider_texture_width (int)
 	pc[6] = float(collider_texture_width)
+	# flow_rate (int)
+	pc[7] = float(flow_rate)
 	# (padding — vulkan word-aligns push constants)
-	pc[7] = 0.0
+	#pc[8] = 0.0
 	
 	return pc.to_byte_array()
+
+## Simulation demo functions:---------------------------------------------------
+func _reload_simulation() -> void:
+	particles_spawned = 0
+	_update_parameters()
+	_reset_particle_textures()
+
+func _update_parameters() -> void:
+	var ui = get_node("/root/Main/UI/Parameters")
+	# Initial Velocity Offsets
+	initial_velocity.x = ui.get_child(1).value
+	initial_velocity.y = ui.get_child(2).value
+	initial_velocity.z = ui.get_child(3).value
+	# Damping
+	damping = ui.get_child(4).value
+	# Flow Rate
+	flow_rate = ui.get_child(5).value
+	# Lifetime
+	lifetime = ui.get_child(6).value
+
+func _reset_particle_textures() -> void:
+	# Ensure the emitter position is updated
+	emission_point = self.global_position
+	
+	# Reset and update the position/velocity textures
+	var pos_data := PackedFloat32Array()
+	pos_data.resize(particle_texture_width * particle_texture_width * 4) # 4 floats per texel (rgba)
+	var vel_data := PackedFloat32Array()
+	vel_data.resize(particle_texture_width * particle_texture_width * 4)
+	
+	for i in range(num_particles):
+		# Initial Position:
+		pos_data[i * 4 + 0] = emission_point.x # x
+		pos_data[i * 4 + 1] = emission_point.y # y
+		pos_data[i * 4 + 2] = emission_point.z # z
+		pos_data[i * 4 + 3] = lifetime # lifetime
+		
+		# Initial Velocity:
+		vel_data[i * 4 + 0] = initial_velocity.x + randf() # x
+		vel_data[i * 4 + 1] = initial_velocity.y + randf() # y
+		vel_data[i * 4 + 2] = initial_velocity.z + randf() # z
+		vel_data[i * 4 + 3] = i # frame delay
+	
+	# Update the existing textures
+	rd.texture_update(pos_texture_rid, 0, pos_data.to_byte_array())
+	rd.texture_update(vel_texture_rid, 0, vel_data.to_byte_array())
+
+	# Propogate the change to the shader pipelines
+	_rebind_textures()
+
+func _update_counter() -> void:
+	particles_spawned += flow_rate
+	if particles_spawned > num_particles:
+		particles_spawned = num_particles
+	particle_label.set_text("Particles:\n%d /\n%d" % [particles_spawned, num_particles])
 
 func _clean_shader() -> void:
 	## Free all RID objects manually on exit

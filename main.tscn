@@ -1,16 +1,16 @@
-[gd_scene load_steps=8 format=3 uid="uid://b5ursdn8tvjxd"]
+[gd_scene load_steps=10 format=3 uid="uid://b5ursdn8tvjxd"]
 
+[ext_resource type="Script" uid="uid://rwh6aqbo40eo" path="res://scripts/move_emitter.gd" id="1_7mycd"]
+[ext_resource type="Script" uid="uid://dd64eqg15uwg5" path="res://scripts/move_collider.gd" id="1_272bh"]
 [ext_resource type="Script" uid="uid://cxyhmtvqystl0" path="res://simulator/simulator.gd" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://b4tc20buttrgx" path="res://scripts/camera.gd" id="2_0xm2m"]
+[ext_resource type="Script" uid="uid://cvrrydi75c04p" path="res://scripts/switch_camera.gd" id="3_h2yge"]
+[ext_resource type="Script" uid="uid://cxkx732d50pwv" path="res://scripts/fps_counter.gd" id="5_lquwl"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_sgp6g"]
 size = Vector3(8, 0.1, 8)
 
 [sub_resource type="BoxMesh" id="BoxMesh_0xm2m"]
-
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_0xm2m"]
-
-[sub_resource type="CylinderMesh" id="CylinderMesh_h2yge"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_0xm2m"]
 radius = 0.05
@@ -18,64 +18,75 @@ height = 0.1
 
 [node name="Main" type="Node3D"]
 
-[node name="Ground" type="MeshInstance3D" parent="." groups=["collidable"]]
+[node name="Colliders" type="Node3D" parent="."]
+
+[node name="Ground" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
 transform = Transform3D(1, 0, 0, 0, 5.6868844, 0, 0, 0, 1.793807, 0, 0, 0)
 mesh = SubResource("BoxMesh_sgp6g")
 skeleton = NodePath("")
 
-[node name="Ground2" type="MeshInstance3D" parent="." groups=["collidable"]]
+[node name="Ground2" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
 transform = Transform3D(1, 0, 0, 0, 5.5343757, 0, 0, 0, 1.793807, 0, 6.829623, 0)
 mesh = SubResource("BoxMesh_sgp6g")
 skeleton = NodePath("")
 
-[node name="Wall" type="MeshInstance3D" parent="." groups=["collidable"]]
+[node name="Wall" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
 transform = Transform3D(7.6402287, 0, 0, 0, 6.9313035, 0, 0, 0, 1.5960035, 0, 3.204785, 6.3690686)
 mesh = SubResource("BoxMesh_0xm2m")
+skeleton = NodePath("../..")
 
-[node name="Wall2" type="MeshInstance3D" parent="." groups=["collidable"]]
+[node name="Wall2" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
 transform = Transform3D(7.6402287, 0, 0, 0, 6.9313035, 0, 0, 0, 0.7095305, 0, 3.481882, -6.5)
 mesh = SubResource("BoxMesh_0xm2m")
+skeleton = NodePath("../..")
 
-[node name="Wall3" type="MeshInstance3D" parent="." groups=["collidable"]]
+[node name="Wall3" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
 transform = Transform3D(1.1143252, 0, 0, 0, 6.9313035, 0, 0, 0, 14.281727, 4, 3.4820952, 0)
 mesh = SubResource("BoxMesh_0xm2m")
+skeleton = NodePath("../..")
 
-[node name="Wall4" type="MeshInstance3D" parent="." groups=["collidable"]]
+[node name="Wall4" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
 transform = Transform3D(1.1143252, 0, 0, 0, 6.9313035, 0, 0, 0, 14.281727, -3.4223375, 3.4820952, 0)
 mesh = SubResource("BoxMesh_0xm2m")
+skeleton = NodePath("../..")
 
-[node name="EmissionTracker" type="Node3D" parent="."]
+[node name="Wall5" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
+transform = Transform3D(8.230823, 0, 0, 0, 2.8879578, 0, 0, 0, 0.42112496, 0.3023882, 0.61193085, 0.1805166)
+mesh = SubResource("BoxMesh_0xm2m")
+skeleton = NodePath("../..")
 
-[node name="Nozzle" type="StaticBody3D" parent="EmissionTracker"]
-transform = Transform3D(1, 0, 0, 0, -0.3420201, -0.93969256, 0, 0.93969256, -0.3420201, 0, 0, 0)
-visible = false
+[node name="Wall6" type="MeshInstance3D" parent="Colliders" node_paths=PackedStringArray("controller") groups=["collidable"]]
+transform = Transform3D(1.0813191, 0, 0, 0, 2.9341292, 0, 0, 0, 1.9564394, 0.3023882, 0.61193085, 3.456338)
+mesh = SubResource("BoxMesh_0xm2m")
+skeleton = NodePath("../..")
+script = ExtResource("1_272bh")
+controller = NodePath("../../UI/ToggleDynamicCollider")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="EmissionTracker/Nozzle"]
-shape = SubResource("CylinderShape3D_0xm2m")
+[node name="EmissionTracker" type="Node3D" parent="." node_paths=PackedStringArray("controller") groups=["emitter_parent"]]
+script = ExtResource("1_7mycd")
+controller = NodePath("../UI/ToggleMove")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="EmissionTracker/Nozzle"]
-mesh = SubResource("CylinderMesh_h2yge")
-
-[node name="EmissionPoint" type="MeshInstance3D" parent="EmissionTracker"]
+[node name="EmissionPoint" type="MeshInstance3D" parent="EmissionTracker" node_paths=PackedStringArray("reload_controller")]
 transform = Transform3D(1, 0, 0, 0, 0.99999964, 0, 0, 0, 0.99999964, 0, 4, -1)
 mesh = SubResource("SphereMesh_0xm2m")
-skeleton = NodePath("../Nozzle")
+skeleton = NodePath("")
 script = ExtResource("1_ig7tw")
+reload_controller = NodePath("../../UI/Reload")
 
 [node name="Rig" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.034505, 0)
 script = ExtResource("2_0xm2m")
 rotation_speed = 30.0
 
-[node name="Camera3D" type="Camera3D" parent="Rig"]
+[node name="Camera3D" type="Camera3D" parent="Rig" groups=["camera"]]
 transform = Transform3D(1, 0, 0, 0, 0.9514602, 0.3077718, 0, -0.3077718, 0.9514602, 0, 0, 3)
 fov = 100.0
 
-[node name="ProfileCamera" type="Camera3D" parent="."]
+[node name="ProfileCamera" type="Camera3D" parent="." groups=["camera"]]
 transform = Transform3D(-4.327949e-08, -0.72007895, 0.6938923, -6.1295227e-09, 0.6938923, 0.72007895, -1, 2.6911417e-08, -3.4445044e-08, 3.729414, 6.200492, -0.35066748)
 fov = 100.0
 
-[node name="ExternalCamera" type="Camera3D" parent="."]
+[node name="ExternalCamera" type="Camera3D" parent="." groups=["camera"]]
 transform = Transform3D(-3.552577e-08, 0.58263373, -0.81273484, 2.546773e-08, 0.81273484, 0.58263373, 1, 0, -4.371139e-08, -10.43229, 10.583673, 0)
 fov = 100.0
 
@@ -83,3 +94,187 @@ fov = 100.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -1)
 omni_range = 10.0
 omni_attenuation = 0.5
+
+[node name="UI" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="ToggleEmit" type="CheckButton" parent="UI"]
+layout_mode = 0
+offset_left = 1056.0
+offset_top = 40.0
+offset_right = 1151.0
+offset_bottom = 75.0
+text = "Emit:"
+
+[node name="ToggleMove" type="CheckButton" parent="UI"]
+layout_mode = 0
+offset_left = 1056.0
+offset_top = 75.0
+offset_right = 1151.0
+offset_bottom = 110.0
+text = "Move:"
+
+[node name="ToggleDynamicCollider" type="CheckButton" parent="UI"]
+layout_mode = 0
+offset_left = 973.0
+offset_top = 608.0
+offset_right = 1146.0
+offset_bottom = 639.0
+text = "Moving Collider:"
+
+[node name="SwitchCamera" type="Button" parent="UI"]
+layout_mode = 0
+offset_left = 1028.0
+offset_top = 5.0
+offset_right = 1151.0
+offset_bottom = 36.0
+text = "Switch Camera"
+script = ExtResource("3_h2yge")
+
+[node name="FPS" type="Label" parent="UI"]
+layout_mode = 0
+offset_left = 11.0
+offset_right = 51.0
+offset_bottom = 23.0
+text = "FPS: 0"
+script = ExtResource("5_lquwl")
+
+[node name="NumParticles" type="Label" parent="UI"]
+layout_mode = 0
+offset_left = 11.0
+offset_top = 39.0
+offset_right = 82.0
+offset_bottom = 114.0
+text = "Particles:
+0 /
+0"
+
+[node name="Parameters" type="Control" parent="UI"]
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="VelocityLabel" type="Label" parent="UI/Parameters"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 130.0
+offset_right = 81.0
+offset_bottom = 153.0
+text = "Velocity:"
+
+[node name="xVelocity" type="VSlider" parent="UI/Parameters"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 159.0
+offset_right = 32.0
+offset_bottom = 338.0
+max_value = 30.0
+scrollable = false
+
+[node name="Label" type="Label" parent="UI/Parameters/xVelocity"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 188.0
+offset_right = 41.0
+offset_bottom = 211.0
+text = "X"
+
+[node name="yVelocity" type="VSlider" parent="UI/Parameters"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 159.0
+offset_right = 56.0
+offset_bottom = 338.0
+max_value = 30.0
+scrollable = false
+
+[node name="Label" type="Label" parent="UI/Parameters/yVelocity"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 188.0
+offset_right = 41.0
+offset_bottom = 211.0
+text = "Y"
+
+[node name="zVelocity" type="VSlider" parent="UI/Parameters"]
+layout_mode = 0
+offset_left = 65.0
+offset_top = 159.0
+offset_right = 81.0
+offset_bottom = 338.0
+max_value = 30.0
+value = 1.0
+scrollable = false
+
+[node name="Label" type="Label" parent="UI/Parameters/zVelocity"]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 188.0
+offset_right = 41.0
+offset_bottom = 211.0
+text = "Z"
+
+[node name="Damping" type="HScrollBar" parent="UI/Parameters"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 412.0
+offset_right = 134.0
+offset_bottom = 424.0
+min_value = -1.0
+max_value = 0.0
+step = 0.1
+value = -0.7
+
+[node name="Label" type="Label" parent="UI/Parameters/Damping"]
+layout_mode = 0
+offset_left = -2.0
+offset_top = -26.0
+offset_right = 38.0
+offset_bottom = -3.0
+text = "Damping:"
+
+[node name="FlowRate" type="HScrollBar" parent="UI/Parameters"]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 457.0
+offset_right = 133.0
+offset_bottom = 469.0
+step = 1.0
+value = 1.0
+rounded = true
+
+[node name="Label" type="Label" parent="UI/Parameters/FlowRate"]
+layout_mode = 0
+offset_left = -2.0
+offset_top = -26.0
+offset_right = 38.0
+offset_bottom = -3.0
+text = "Flow Rate:"
+
+[node name="Lifetime" type="HScrollBar" parent="UI/Parameters"]
+layout_mode = 0
+offset_left = 18.0
+offset_top = 502.0
+offset_right = 136.0
+offset_bottom = 514.0
+step = 1.0
+value = 10.0
+
+[node name="Label" type="Label" parent="UI/Parameters/Lifetime"]
+layout_mode = 0
+offset_left = -2.0
+offset_top = -26.0
+offset_right = 38.0
+offset_bottom = -3.0
+text = "Lifetime:"
+
+[node name="Reload" type="Button" parent="UI"]
+layout_mode = 0
+offset_left = 4.0
+offset_top = 610.0
+offset_right = 127.0
+offset_bottom = 641.0
+text = "Reload"

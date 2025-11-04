@@ -13,18 +13,27 @@ layout(push_constant, std140) uniform PushConstants {
     float dt;
     float num_colliders;
     float collider_texture_width;
+    float flow_rate;
 
     // word-alignment padding
-    float _pad0;
+    //float _pad0;
 } pc;
 
 void main() {
     ivec2 coord = ivec2(gl_GlobalInvocationID.xy);
-    vec4 pos = imageLoad(pos_texture, coord);
-    vec4 vel = imageLoad(vel_texture, coord);
+    vec4 pos = imageLoad(pos_texture, coord); // pos x, y, z + lifetime
+    vec4 vel = imageLoad(vel_texture, coord); // vel x, y, z + frame delay
     
+    int particle_id = coord.y * imageSize(pos_texture).x + coord.x;
+    // If the particle is yet to be alive, decrement its frame delay and skip update
+    if (vel.w > 0.0) {
+        vel.w -= pc.flow_rate;
+        imageStore(vel_texture, coord, vel);
+        return;
+    }
+
+    // If the particle is dead, skip update
     if (pos.w <= 0.0) {
-        // Dead particle, skip update
         return;
     }
 
@@ -32,7 +41,7 @@ void main() {
     vel.y += pc.gravity.y * pc.dt;
     pos += vel * pc.dt;
 
-    // Detect bounding box collision
+    // Detect bounding box collisions
     for (int i = 0; i < int(pc.num_colliders); i++) {
         int i_min = i * 2;
         int i_max = i * 2 + 1;

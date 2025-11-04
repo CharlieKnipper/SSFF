@@ -26,14 +26,17 @@ void vertex() {
     vec2 uv = get_uv_from_id(id);
 
     // Set the position accordingly
-    vec4 pos = texture(pos_texture, uv);
+    vec4 pos = texture(pos_texture, uv); // pos.w = lifetime
+    vec4 vel = texture(vel_texture, uv); // vel.w = frame delay
     
-    if (pos.w > 0.0) {
-        // Alive particle
-        VERTEX = pos.xyz;
-    } else {
+    if (vel.w > 0.0) {
+        // Particle not yet alive
+    } else if (pos.w <= 0.0) {
         // Dead particle
         VERTEX = vec3(0.0, -9999.0, 0.0); // Move dead particles out of view
+    } else {
+        // Alive particle
+        VERTEX = pos.xyz;
     }
 
     POINT_SIZE = 4.0; // Set point size for rendering particles
