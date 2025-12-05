@@ -1,18 +1,24 @@
 extends Node3D
 
 # Particle parameters
-@export var num_particles := 100000
+@export var num_particles := 5000
+@export var lifetime := 100.0
+@export var lifetime_multiplier := 1.0
 @export var gravity := Vector3(0, -9.81, 0)
 @export var damping := -0.7
 @export var flow_rate := 1
-@export var lifetime := 10.0
+
+# SPH parameters
+@export var texels_per_cell := 9 # optimally, this should be a perfect square
+@export var SPH_grid_min := Vector3(-25, -25, -25)
+@export var SPH_grid_max := Vector3(25, 25, 25)
+@export var smoothing_radius := 0.5
 @export var mass := 1.0
 @export var viscosity := 0.1
-# SPH parameters
-@export var smoothing_radius := 2
-@export var texels_per_cell := 9 # optimally, this should be a perfect square
-@export var SPH_grid_min := Vector3(0, 0, 0)
-@export var SPH_grid_max := Vector3(100, 100, 100)
+@export var gas_constant := 200.0
+@export var rest_density := 1000.0
+@export var max_acceleration_magnitude := 50.0
+@export var max_density := 2000.0
 
 # Sim parameters
 @export var initial_velocity := Vector3(0.0, 0.0, 1.0)
@@ -296,13 +302,6 @@ func _ready():
 	particle_mat.set_shader_parameter("vel_texture", vel_texture)
 	particle_mat.set_shader_parameter("texture_width", particle_texture_width)
 	
-	# SPH debug parameters
-	particle_mat.set_shader_parameter("grid_texture", grid_texture)
-	particle_mat.set_shader_parameter("grid_texture_width", grid_texture_width)
-	particle_mat.set_shader_parameter("grid_min", SPH_grid_min)
-	particle_mat.set_shader_parameter("cell_size", smoothing_radius)
-	particle_mat.set_shader_parameter("num_cells", count_buffer_len)
-	
 	## -------------------- Mesh Setup --------------------
 	
 	# Define the vertices of the ArrayMesh
@@ -451,13 +450,15 @@ func _pack_collidables() -> PackedByteArray:
 func _pack_push_constants(delta) -> PackedByteArray:
 	## Set push constants
 	var pc := PackedFloat32Array()
-	pc.resize(20) # This needs to be a multiple of 16 bytes; each float is 4 bytes (see below)
+	pc.resize(28) # This needs to be a multiple of 16 bytes; each float is 4 bytes (see below)
+	## Slot 0
 	# gravity (vec3)
 	pc[0] = gravity.x
 	pc[1] = gravity.y
 	pc[2] = gravity.z
-	# damping (float)
-	pc[3] = damping
+	pc[3] = 0.0 # padding
+	
+	## Slot 1
 	# dt (float)
 	pc[4] = delta
 	# num_colliders (int)
@@ -466,26 +467,49 @@ func _pack_push_constants(delta) -> PackedByteArray:
 	pc[6] = float(collider_texture_width)
 	# flow_rate (int)
 	pc[7] = float(flow_rate)
+	
+	## Slot 2
 	# SPH grid min (vec3)
 	pc[8] = SPH_grid_min.x
 	pc[9] = SPH_grid_min.y
 	pc[10] = SPH_grid_min.z
+	pc[11] = 0.0 # padding
+	
+	## Slot 3
 	# SPH grid max (vec3)
-	pc[11] = SPH_grid_max.x
-	pc[12] = SPH_grid_max.y
-	pc[13] = SPH_grid_max.z
+	pc[12] = SPH_grid_max.x
+	pc[13] = SPH_grid_max.y
+	pc[14] = SPH_grid_max.z
+	pc[15] = 0.0 # padding
+	
+	## Slot 4
 	# SPH grid texture width (int)
-	pc[14] = float(grid_texture_width)
+	pc[16] = float(grid_texture_width)
 	# SPH count buffer length (int)
-	pc[15] = float(count_buffer_len)
+	pc[17] = float(count_buffer_len)
 	# SPH texels per cell (int)
-	pc[16] = float(texels_per_cell)
+	pc[18] = float(texels_per_cell)
 	# SPH smoothing kernel
-	pc[17] = smoothing_radius
+	pc[19] = smoothing_radius
+	
+	## Slot 5
 	# particle texture width (int)
-	pc[18] = particle_texture_width
-	# (padding — vulkan word-aligns push constants)
-	#pc[...] = 0.0
+	pc[20] = float(particle_texture_width)
+	# pressure gas constant (float)
+	pc[21] = gas_constant
+	# pressure rest density (float)
+	pc[22] = rest_density
+	# max instantaneous acceleration magnitude (float)
+	pc[23] = max_acceleration_magnitude
+	
+	## Slot 6
+	# max particle density (float)
+	pc[24] = max_density
+	# lifetime multiplier (float)
+	pc[25] = lifetime_multiplier
+	# damping (float)
+	pc[26] = damping
+	pc[27] = 0.0 # padding
 	
 	return pc.to_byte_array()
 

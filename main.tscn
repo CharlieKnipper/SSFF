@@ -50,13 +50,15 @@ transform = Transform3D(1.1143252, 0, 0, 0, 6.9313035, 0, 0, 0, 14.281727, -3.42
 mesh = SubResource("BoxMesh_0xm2m")
 skeleton = NodePath("../..")
 
-[node name="Wall5" type="MeshInstance3D" parent="Colliders" groups=["collidable"]]
+[node name="Wall5" type="MeshInstance3D" parent="Colliders"]
 transform = Transform3D(8.230823, 0, 0, 0, 2.8879578, 0, 0, 0, 0.42112496, 0.3023882, 0.61193085, 0.1805166)
+visible = false
 mesh = SubResource("BoxMesh_0xm2m")
 skeleton = NodePath("../..")
 
-[node name="Wall6" type="MeshInstance3D" parent="Colliders" node_paths=PackedStringArray("controller") groups=["collidable"]]
+[node name="Wall6" type="MeshInstance3D" parent="Colliders" node_paths=PackedStringArray("controller")]
 transform = Transform3D(1.0813191, 0, 0, 0, 2.9341292, 0, 0, 0, 1.9564394, 0.3023882, 0.61193085, 3.456338)
+visible = false
 mesh = SubResource("BoxMesh_0xm2m")
 skeleton = NodePath("../..")
 script = ExtResource("1_272bh")

@@ -14,23 +14,38 @@ layout(set = 0, binding = 4, std430) restrict buffer count_buffer {
 } count_data;
 
 layout(push_constant, std140) uniform PushConstants {
-    vec3 gravity;
-    float damping;
+    // word 0
+    vec4 gravity;
+
+    // word 1
     float dt;
     float num_colliders;
     float collider_texture_width;
     float flow_rate;
 
-    vec3 grid_min;
-    vec3 grid_max;
+    // word 2
+    vec4 grid_min;
+
+    // word 3
+    vec4 grid_max;
+
+    // word 4
     float grid_texture_width;
     float count_buffer_len;
     float texels_per_cell;
     float smoothing_radius;
-    float particle_texture_width;
 
-    // word-alignment padding if necessary
-    //float _pad0;
+    // word 5
+    float particle_texture_width;
+    float gas_constant;
+    float rest_density;
+    float max_accel;
+
+    // word 6
+    float max_density;
+    float lifetime_multiplier;
+    float damping;
+    float _pad0;
 } pc;
 
 const int COUNT_PER_TEXEL = 4; // number of particle indices stored per texel
@@ -84,7 +99,7 @@ void main() {
     
     // We iterate over the 3x3x3 grid of cells surrounding this particle's cell
     //  this lets us find all particles within the smoothing radius without iterating over every cell
-    ivec3 cell = ivec3(floor((pos.xyz - pc.grid_min) / pc.smoothing_radius));
+    ivec3 cell = ivec3(floor((pos.xyz - pc.grid_min.xyz) / pc.smoothing_radius));
     for (int z = -1; z <= 1; z++)
     for (int y = -1; y <= 1; y++)
     for (int x = -1; x <= 1; x++) {
@@ -111,7 +126,6 @@ void main() {
         if (cell_count == 0) continue; // we can skip empty cells
 
         for (int slot = 0; slot < cell_count; slot++) {
-            uint texel_offset = slot / COUNT_PER_TEXEL;
             uint channel_offset = slot % COUNT_PER_TEXEL;
 
             vec4 texel = imageLoad(grid_texture, neighbor_uv);
@@ -147,7 +161,7 @@ void main() {
                 float spiky = spiky_const(h) * pow(h - r, 2.0);
                 vec3 gradW = spiky * (r_ij / r);
 
-                force += -1.0 * mass_j * (pressure_i + pressure_j) / (2.0 * density_j) * gradW;
+                force += -mass_j * ( pressure_i/(density_i*density_i) + pressure_j/(density_j*density_j) ) * gradW;
 
                 // Viscosity force
                 float lapW = visc_laplacian_const(h) * (h - r);
@@ -159,11 +173,13 @@ void main() {
         }
     }
 
-    // Add gravity
-    force += pc.gravity;
-
     // Acceleration
-    vec3 accel = pc.gravity;
+    vec3 accel = force / density_i;
+
+    // Add gravity
+    accel += pc.gravity.xyz;
+
+    accel = clamp(accel, -1.0 * pc.max_accel, pc.max_accel);
 
     // Integrate forces
     vel.xyz += accel * pc.dt;
@@ -205,7 +221,7 @@ void main() {
     }
 
     // Decrement particle lifetime
-    pos.w -= pc.dt;
+    //pos.w -= pc.lifetime_multiplier * pc.dt;
 
     // write back
     imageStore(pos_texture, coord, pos);
