@@ -5,6 +5,13 @@ uniform sampler2D vel_texture;
 uniform sampler2D pos_texture;
 uniform int texture_width;
 
+// SPH debug parameters
+uniform sampler2D grid_texture;
+uniform int grid_texture_width;
+uniform vec3 grid_min;
+uniform float cell_size;
+uniform int num_cells;
+
 const float VELOCITY_THRESHOLD = 20.0; // m/s
 vec3 velocity_to_color(vec4 v) {
     return vec3(v.x*v.x, v.y*v.y, v.z*v.z) / VELOCITY_THRESHOLD;
@@ -47,6 +54,9 @@ void fragment() {
         discard; // Do not render dead particles
     }
 
-    vec3 v = velocity_to_color(texture(vel_texture, get_uv_from_id(int(UV.x))));
-    ALBEDO = v; // debug particle velocity
+    /* DEBUG */
+    // vec4 pos = texture(pos_texture, get_uv_from_id(int(UV.x)));
+    // vec3 cell = vec3(floor((pos.xyz - grid_min) / cell_size));
+    
+    ALBEDO = vec3(0.0); // debug particle velocity
 }
