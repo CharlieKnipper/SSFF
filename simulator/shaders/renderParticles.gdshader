@@ -1,14 +1,16 @@
 shader_type spatial;
-render_mode unshaded;
+render_mode unshaded, depth_draw_opaque, blend_mix;
 
 uniform sampler2D vel_texture;
 uniform sampler2D pos_texture;
 uniform int texture_width;
 
-const float VELOCITY_THRESHOLD = 20.0; // m/s
-vec3 velocity_to_color(vec4 v) {
-    return vec3(v.x*v.x, v.y*v.y, v.z*v.z) / VELOCITY_THRESHOLD;
-}
+uniform vec4 color : source_color = vec4(0.2, 0.4, 1.0, 1.0);
+
+// const float VELOCITY_THRESHOLD = 20.0; // m/s
+// vec3 velocity_to_color(vec4 v) {
+//     return vec3(v.x*v.x, v.y*v.y, v.z*v.z) / VELOCITY_THRESHOLD;
+// }
 
 vec2 get_uv_from_id(int id) {
     int x = id % texture_width;
@@ -47,5 +49,6 @@ void fragment() {
         discard; // Do not render dead particles
     }
     
-    ALBEDO = vec3(0.0); // debug particle velocity
+    ALBEDO = color.rgb;
+    ALPHA = color.a;
 }

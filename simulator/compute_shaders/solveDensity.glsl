@@ -14,38 +14,26 @@ layout(set = 0, binding = 4, std430) restrict buffer count_buffer {
 } count_data;
 
 layout(push_constant, std140) uniform PushConstants {
-    // word 0
-    vec4 gravity;
-
-    // word 1
+    vec3 gravity;
+    float damping;
     float dt;
     float num_colliders;
     float collider_texture_width;
     float flow_rate;
 
-    // word 2
-    vec4 grid_min;
-
-    // word 3
-    vec4 grid_max;
-
-    // word 4
+    vec3 grid_min;
+    vec3 grid_max;
     float grid_texture_width;
     float count_buffer_len;
     float texels_per_cell;
     float smoothing_radius;
-
-    // word 5
     float particle_texture_width;
+    
     float gas_constant;
     float rest_density;
-    float max_accel;
 
-    // word 6
-    float max_density;
-    float lifetime_multiplier;
-    float damping;
-    float _pad0;
+    // word-alignment padding if necessary
+    //float _pad0;
 } pc;
 
 const int COUNT_PER_TEXEL = 4; // number of particle indices stored per texel
@@ -89,7 +77,7 @@ void main() {
     param.y = 0.0;
 
     // Loop over the 3x3x3 neighbor cells surrounding this particle's cell
-    ivec3 cell = ivec3(floor((pos.xyz - pc.grid_min.xyz) / pc.smoothing_radius));
+    ivec3 cell = ivec3(floor((pos.xyz - pc.grid_min) / pc.smoothing_radius));
     for (int z = -1; z <= 1; z++)
     for (int y = -1; y <= 1; y++)
     for (int x = -1; x <= 1; x++) {
@@ -126,13 +114,12 @@ void main() {
 
             // Get the neighboring cell's position
             vec4 neighbor_pos = imageLoad(pos_texture, neighbor_id);
-            vec4 neighbor_param = imageLoad(param_texture, neighbor_id);
 
             vec3 r_ij = pos.xyz - neighbor_pos.xyz;
             float r2 = dot(r_ij, r_ij);
 
             // Evaluate density contribution
-            param.x += neighbor_param.z * W_poly6(r2, pc.smoothing_radius); // param.x = density; param.z = mass
+            param.x += param.z * W_poly6(r2, pc.smoothing_radius); // param.x = density; param.z = mass
 
             neighbor_uv = iterate_uv(neighbor_uv, pc.grid_texture_width);
         }
@@ -140,7 +127,6 @@ void main() {
 
     // Compute pressure from equation of state
     param.y = pc.gas_constant * (param.x - pc.rest_density);
-    param.y = max(0.0, param.y);
 
     // write back
     imageStore(param_texture, coord, param);

@@ -8,38 +8,26 @@ layout(set = 0, binding = 4, std430) restrict buffer count_buffer {
 } count_data;
 
 layout(push_constant, std140) uniform PushConstants {
-    // word 0
-    vec4 gravity;
-
-    // word 1
+    vec3 gravity;
+    float damping;
     float dt;
     float num_colliders;
     float collider_texture_width;
     float flow_rate;
 
-    // word 2
-    vec4 grid_min;
-
-    // word 3
-    vec4 grid_max;
-
-    // word 4
+    vec3 grid_min;
+    vec3 grid_max;
     float grid_texture_width;
     float count_buffer_len;
     float texels_per_cell;
     float smoothing_radius;
-
-    // word 5
     float particle_texture_width;
+
     float gas_constant;
     float rest_density;
-    float max_accel;
 
-    // word 6
-    float max_density;
-    float lifetime_multiplier;
-    float damping;
-    float _pad0;
+    // word-alignment padding if necessary
+    //float _pad0;
 } pc;
 
 void main() {
