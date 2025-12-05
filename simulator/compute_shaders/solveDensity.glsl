@@ -28,9 +28,12 @@ layout(push_constant, std140) uniform PushConstants {
     float texels_per_cell;
     float smoothing_radius;
     float particle_texture_width;
-    
+
     float gas_constant;
     float rest_density;
+    float particle_distance;
+    float separation_strength;
+    float separation_iters;
 
     // word-alignment padding if necessary
     //float _pad0;

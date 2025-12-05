@@ -4,10 +4,10 @@ extends Node3D
 @export var num_particles := 5000
 @export var gravity := Vector3(0, -9.81, 0)
 @export var damping := -0.7
-@export var flow_rate := 100
+@export var flow_rate := 1
 @export var lifetime := 10.0
 @export var mass := 1.0
-@export var viscosity := 0.1
+@export var viscosity := 10.0
 @export var gas_constant := 200.0
 @export var rest_density := 1000.0
 # SPH parameters
@@ -20,6 +20,9 @@ extends Node3D
 @export var initial_velocity := Vector3(0.0, 0.0, 1.0)
 @export var max_colliders := 50
 @export var reload_controller : Button
+@export var particle_distance := 0.1
+@export var separation_strength := 1.0
+@export var separation_iters := 2
 
 ## Demo variables
 var particles_spawned := 0
@@ -317,6 +320,16 @@ func _ready():
 	m.mesh = arr_mesh
 	m.material_override = particle_mat
 	m.global_transform = Transform3D.IDENTITY # Ensure the mesh has an identity global transform so world space vertex coords map correctly
+
+	# Try to increase render priority so the particle mesh isn't clipped by other geometry.
+	# This is a guarded attempt: if the API exists on this engine/version it will be used,
+	# otherwise it will safely be skipped. The shader also disables depth testing/draw so
+	# particles reliably render on top.
+	if m.has_method("set_render_priority"):
+		m.set_render_priority(1000)
+	elif m.has_method("set_z_index"):
+		m.set_z_index(1000)
+
 	get_tree().root.add_child.call_deferred(m)
 	
 	# Connect to UI elements
@@ -446,7 +459,7 @@ func _pack_collidables() -> PackedByteArray:
 func _pack_push_constants(delta) -> PackedByteArray:
 	## Set push constants
 	var pc := PackedFloat32Array()
-	pc.resize(24) # This needs to be a multiple of 16 bytes; each float is 4 bytes (see below)
+	pc.resize(28) # This needs to be a multiple of 16 bytes; each float is 4 bytes (see below)
 	# gravity (vec3)
 	pc[0] = gravity.x
 	pc[1] = gravity.y
@@ -483,6 +496,12 @@ func _pack_push_constants(delta) -> PackedByteArray:
 	pc[19] = gas_constant
 	# pressure rest density (float)
 	pc[20] = rest_density
+	# particle separation distance (float)
+	pc[21] = particle_distance
+	# separation strength (float)
+	pc[22] = separation_strength
+	# separation iterations (int as float)
+	pc[23] = float(separation_iters)
 	# (padding — vulkan word-aligns push constants)
 	#pc[...] = 0.0
 	

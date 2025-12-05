@@ -31,6 +31,9 @@ layout(push_constant, std140) uniform PushConstants {
 
     float gas_constant;
     float rest_density;
+    float particle_distance;
+    float separation_strength;
+    float separation_iters;
 
     // word-alignment padding if necessary
     //float _pad0;
@@ -210,6 +213,67 @@ void main() {
             } else {
                 pos.z += (pos.z < (min_box.z + max_box.z)/2.0) ? -pen_min.z : pen_max.z;
                 vel.z *= pc.damping;
+            }
+        }
+    }
+
+    // Position-Based Dynamics (PBD) style separation to enforce minimum particle distance
+    // We perform a small number of local projection iterations per particle. This only
+    // adjusts the current particle (half-corrections) to avoid atomic writes to neighbors.
+    float pd = pc.particle_distance;
+    float pd2 = pd * pd;
+    int sep_iters = int(max(0.0, pc.separation_iters));
+    for (int si = 0; si < sep_iters; si++) {
+        // Recompute cell because pos may have changed
+        ivec3 scell = ivec3(floor((pos.xyz - pc.grid_min) / pc.smoothing_radius));
+        for (int z = -1; z <= 1; z++)
+        for (int y = -1; y <= 1; y++)
+        for (int x = -1; x <= 1; x++) {
+            ivec3 neighbor_cell = scell + ivec3(x, y, z);
+            if (neighbor_cell.x < 0 || neighbor_cell.y < 0 || neighbor_cell.z < 0 ||
+                neighbor_cell.x >= int(pc.grid_texture_width) ||
+                neighbor_cell.y >= int(pc.grid_texture_width) ||
+                neighbor_cell.z >= int(pc.grid_texture_width)) continue;
+            int neighbor_cell_index =   neighbor_cell.x +
+                                        neighbor_cell.y * int(pc.grid_texture_width) +
+                                        neighbor_cell.z * int(pc.grid_texture_width) * int(pc.grid_texture_width);
+
+            ivec2 neighbor_uv = ivec2(neighbor_cell_index % int(pc.grid_texture_width),
+                                        neighbor_cell_index / int(pc.grid_texture_width));
+
+            uint cell_count = count_data.counts[neighbor_cell_index];
+            if (cell_count == 0) continue;
+
+            for (int slot = 0; slot < int(cell_count); slot++) {
+                uint texel_offset = uint(slot) / uint(COUNT_PER_TEXEL);
+                uint channel_offset = uint(slot) % uint(COUNT_PER_TEXEL);
+
+                vec4 texel = imageLoad(grid_texture, neighbor_uv);
+                int neighbor_id_flat = int(texel[int(channel_offset)]);
+                ivec2 neighbor_id = ivec2(neighbor_id_flat % int(pc.particle_texture_width),
+                                        neighbor_id_flat / int(pc.particle_texture_width));
+
+                if (neighbor_id == ivec2(coord)) {
+                    neighbor_uv = iterate_uv(neighbor_uv, pc.grid_texture_width);
+                    continue;
+                }
+
+                vec4 neighbor_pos = imageLoad(pos_texture, neighbor_id);
+
+                vec3 r_ij = pos.xyz - neighbor_pos.xyz;
+                float r2 = dot(r_ij, r_ij);
+                if (r2 > 0.0 && r2 < pd2) {
+                    float r = sqrt(r2);
+                    vec3 dir = r_ij / max(r, 1e-6);
+                    vec3 corr = (pd - r) * dir;
+                    // Apply half correction to this particle; scale by separation_strength
+                    pos.xyz += 0.5 * corr * pc.separation_strength;
+                    // Damp velocity along collision normal a bit to reduce jitter
+                    float vn = dot(vel.xyz, dir);
+                    vel.xyz -= dir * vn * 0.5 * pc.separation_strength;
+                }
+
+                neighbor_uv = iterate_uv(neighbor_uv, pc.grid_texture_width);
             }
         }
     }

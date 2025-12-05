@@ -29,6 +29,9 @@ layout(push_constant, std140) uniform PushConstants {
 
     float gas_constant;
     float rest_density;
+    float particle_distance;
+    float separation_strength;
+    float separation_iters;
 
     // word-alignment padding if necessary
     //float _pad0;
